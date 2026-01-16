@@ -1,0 +1,55 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    pull_policy: always
+    ports:
+      - "5678:5678"
+    env_file:
+      - .env
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      # Enable task runners and use EXTERNAL mode
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      # Broker: n8n itself will act as broker on 5679
+      - N8N_RUNNERS_TASK_BROKER_URI=n8n:5679
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  runners:
+    image: n8nio/runners:latest
+    container_name: n8n-runners
+    restart: unless-stopped
+    pull_policy: always
+    depends_on:
+      - n8n
+    env_file:
+      - .env
+    environment:
+      # Same broker URI as above so runners can connect
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      # Allow Python & JS runners
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_PYTHON_ENABLED=true
+      - N8N_RUNNERS_JAVASCRIPT_ENABLED=true
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+
+  redis-db:
+    image: redis:latest
+    container_name: redis-db
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  n8n_data:
+  redis-data:

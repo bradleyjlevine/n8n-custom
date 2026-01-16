@@ -1,0 +1,1172 @@
+{
+  "name": "Cybersecurity News",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        16
+      ],
+      "id": "31d821c6-b1a0-4323-86c6-1a04e9089618",
+      "name": "When clicking ‘Execute workflow’",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json }}",
+        "options": {
+          "ignoreSSL": true
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -336,
+        16
+      ],
+      "id": "04457361-ab03-421a-b12f-3cbc91eee2b1",
+      "name": "RSS Read",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "09adc09a-a69d-4e52-acdc-bdc07e027ff7",
+              "leftValue": "={{ $json.pubDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "523298f9-5a46-4757-a324-6f64d0ae3784",
+              "leftValue": "={{ $json.pubDate }}",
+              "rightValue": "={{ new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ') }}\n",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            },
+            {
+              "id": "61710e89-8da7-4906-85b7-870c1cf6e96a",
+              "leftValue": "={{ $json.content }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -112,
+        16
+      ],
+      "id": "7d85ff3b-dfb1-4118-85d6-ba8042ef47a4",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "text": "=<content>{{ $json.content }}</content>\n<author>{{ $json.creator }}</author>\n<title>{{ $json.title }}</title>\n<source>{{ $json.link }}</source>\n<published>{{ $json.pubDate }}</published>",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "entities",
+              "description": "List of Companies/People/Places.  Example: thing1,thing2,thing3\n\nOnly list each entity once."
+            },
+            {
+              "name": "quality",
+              "type": "number",
+              "description": "Value 1 - 5.  1 not trust worthy to 5 trust worthy"
+            },
+            {
+              "name": "cves",
+              "description": "List of CVEs separated by ','\n\nExample of CVE: CVE-2022-19342\n\nExample of String output: CVE-2022-19342, CVE-2023-21214\n\nOnly fill in values found in data, if none found then leave as a empty string ''\n"
+            },
+            {
+              "name": "source",
+              "description": "List of links to article"
+            },
+            {
+              "name": "author",
+              "description": "List of authors separated by ','"
+            },
+            {
+              "name": "summary",
+              "description": "Summary of key details and timeline"
+            },
+            {
+              "name": "importance",
+              "type": "number",
+              "description": "How important is this news?  1 go back to sleep to 5 wake up to fix"
+            },
+            {
+              "name": "published",
+              "type": "date",
+              "description": "Date the news was published, check <published> tag"
+            },
+            {
+              "name": "relevance",
+              "type": "number",
+              "description": "How relevant to cybersecurity is this information on a scale of 1 - 5.  With 5 being this is related to cybersecurity with high confidence."
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batchSize": 20,
+            "delayBetweenBatches": 800
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        112,
+        16
+      ],
+      "id": "7d28da32-6749-4b09-a8ed-634156d59feb",
+      "name": "Information Extractor",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "anthropic/claude-haiku-4.5",
+          "mode": "list",
+          "cachedResultName": "anthropic/claude-haiku-4.5"
+        },
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        240
+      ],
+      "id": "1ae9b643-befc-416e-9ef8-076d517a3a9e",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "RcBzKjwFOVv3lyRZ",
+          "name": "OpenAi account"
+        }
+      },
+      "notes": "OpenRouter"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "output",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        16
+      ],
+      "id": "d2190f0c-4deb-4925-b430-b91ba82f39d4",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "anthropic/claude-sonnet-4",
+          "mode": "list",
+          "cachedResultName": "anthropic/claude-sonnet-4"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3056,
+        240
+      ],
+      "id": "0d23d028-8df7-4fd7-9502-9841121b84a1",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "RcBzKjwFOVv3lyRZ",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "markdownToHtml",
+        "markdown": "={{ $json.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        3344,
+        16
+      ],
+      "id": "516a4e5f-a426-4ffc-be42-71dc159bee26",
+      "name": "Markdown"
+    },
+    {
+      "parameters": {
+        "fromEmail": "<YOUR_MAILGUN_FROM_EMAIL>",
+        "toEmail": "<YOUR_RECIPIENT_EMAIL>",
+        "subject": "Cybersecurity News",
+        "text": "={{ $json.text }}",
+        "html": "={{ $json.data }}"
+      },
+      "type": "n8n-nodes-base.mailgun",
+      "typeVersion": 1,
+      "position": [
+        3568,
+        16
+      ],
+      "id": "cc1cbfe3-8ae4-4906-87a4-015d70d2956d",
+      "name": "Mailgun",
+      "credentials": {
+        "mailgunApi": {
+          "id": "rTbQTqOWq4pmcgey",
+          "name": "Mailgun account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "anthropic/claude-sonnet-4.5",
+          "mode": "list",
+          "cachedResultName": "anthropic/claude-sonnet-4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        416
+      ],
+      "id": "9c2eae7b-0b33-4d81-84af-c99b9b96dd6d",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "RcBzKjwFOVv3lyRZ",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "output",
+        "joinMode": "keepNonMatches",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2320,
+        16
+      ],
+      "id": "ecad953a-1272-4d88-9811-46b005727519",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2544,
+        16
+      ],
+      "id": "e2836b3e-c8c2-46f7-a544-12f86e9af894",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "maxItems": 80
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        912,
+        16
+      ],
+      "id": "f8c2e22e-1f72-469f-9135-e2ae15bbfdae",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://mcp.exa.ai/mcp?exaApiKey=<exa_api_key>",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        2400,
+        656
+      ],
+      "id": "39b8fc9a-2992-493c-83b1-f575faf43a81",
+      "name": "Exa"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "output.relevance",
+              "order": "descending"
+            },
+            {
+              "fieldName": "output.importance",
+              "order": "descending"
+            },
+            {
+              "fieldName": "output.published",
+              "order": "descending"
+            },
+            {
+              "fieldName": "output.quality",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {
+          "disableDotNotation": false
+        }
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        688,
+        16
+      ],
+      "id": "46270526-57a0-4c6f-b85a-2c4d3cffb6ca",
+      "name": "Quality Sort"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are a cybersecurity intelligence analyst specializing in current threat landscape monitoring and industry news analysis. You excel at researching complex security topics, analyzing technical vulnerability details, and synthesizing information from multiple sources into actionable intelligence reports.  \n\n<tools>\nYou must use \"web_search_exa\" tool to research more about the provided news.  \n\nYou must use your \"get_cve\" tool to get more information on all CVEs. These are in the cves key as a string ',' separated.  You must lookup ALL CVEs for additional information.  You must keep the kev, cvss, and epss scores in your analysis if available.\n\nUse your \"search_cpes\" tool to get the cpe strings for products if needed.\n\nUse your mitre tools to look up TTPs and threat actors.\n- \"search_by_name\" - for looking up tactics, techniques, groups, software, mitigations\n- \"get_group_by_alias\" - for looking up threat actors by well known aliases\n- \"get_techniques_used_by_groups\" - for what techniques a threat actor uses\n\nUse 'markitdown_fetch' to grab specific pages if necessary.  This can return a lot of data.\n\n</tools>\n\n<output>\n\nThen summarize what you found keeping the source of the information.  Ensure to include important details for review by another analyst.\n\nFormat all links descriptively as [Title or Description](URL) to enhance readability.\n\nWhen including CVE information you must include the following if known: CVE, CVSS Score, EPSS, KEV Status, Description\n</output>",
+          "maxIterations": 35
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        192
+      ],
+      "id": "5f00e603-3b0a-456a-a628-9b5407b0177e",
+      "name": "CyberNews Researcher"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.data }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a cybersecurity intelligence analyst specializing in current threat landscape monitoring and industry news analysis. You excel at researching complex security topics, analyzing technical vulnerability details, and synthesizing information from multiple sources into actionable intelligence reports.\n\nBe sure to review the item from \"Web Research by Exa.ai\", as this is additional research in markdown format.  Incorporate the information if present.  When adding this information be sure to include attribution.\n     <output_requirements>\n      1. Executive Summary: Brief overview of critical developments with key source attribution\n        - 2-3 sentence overview of the most critical developments\n        - Overall threat landscape assessment for the period\n        - **Sources**: [List key RSS feeds]\n\n      2. Major Security Incidents: For each incident, include:\n        - Date and affected organizations\n        - Attack type and estimated impact\n        - Attribution details with MITRE references when applicable\n        - Current status and recommended actions\n\n      3. Critical Vulnerabilities: For each vulnerability, include:\n        - CVE ID and affected systems\n        - CVSS score, EPSS probability, and KEV status\n        - Exploitation status and patch availability\n        - Comprehensive source attribution\n\n      4. Threat Actor Activity: For each notable threat actor, include:\n        - Actor name with MITRE group ID and aliases\n        - Target sectors and attack vectors with technique IDs\n        - Associated malware and tools\n        - Complete source documentation\n\n      5. Industry Updates: Include relevant regulatory changes, tool releases, or partnerships\n\n      6. Key Takeaways: 3-5 bullet points highlighting critical trends and implications\n        - **Research Summary**: \n        - **RSS Sources**: [Overview of primary RSS feeds consulted]\n      </output_requirements>\n\n      <source_documentation>\n      For every piece of information reported, include multi-layer attribution showing, some items may have multiple sources and you must extract links from them for the below:\n\n      1. Primary Source: RSS feed information with publication date and descriptive link\n      2. Research Sources: Additional details from web searches with descriptive links\n      3. Technical Intelligence: \n        - CVE details: CVSS scores, EPSS probability, KEV status\n        - MITRE threat actor profiles and TTP mappings\n        - Attack technique IDs and descriptions\n\n      Format all links descriptively as [Title or Description](URL) to enhance readability.\n\n      Example Multi-Layer Attribution:\n      - *Foundation: SecurityWeek RSS - \"APT29 Targets Government Agencies\" - Jan 15, 2025 - [SecurityWeek Article](https://www.securityweek.com/apt29-targets-agencies)*\n      - *Research: Found 3 additional threat intelligence reports - [CISA Advisory](https://cisa.gov/news/apt29-advisory-2025)*\n      - *CVE Analysis: CVE-2025-0123 - CVSS 9.1 (Base), EPSS 0.89 (High), KEV Status: ACTIVE*\n      - *Threat Intel: MITRE Group G0016 (APT29/Cozy Bear) - Techniques: T1566.001, T1055, T1012*\n      </source_documentation>\n\n      <quality_guidelines>\n      1. Maintain professional language suitable for both technical and executive audiences\n      2. Focus only on events from the last 14 days with industry-wide significance\n      3. Include complete source attribution for every claim\n      4. Provide technical context to accompany all security details\n      5. Prioritize information based on severity, impact, and actionability\n      </quality_guidelines>"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        2992,
+        16
+      ],
+      "id": "de032ac7-9183-42cb-aae1-a7967aae5677",
+      "name": "Report Maker"
+    },
+    {
+      "parameters": {
+        "content": "## Exa MCP Server\nFor searching the web\n\n[Exa MCP](https://docs.exa.ai/reference/exa-mcp)",
+        "height": 144
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2144,
+        736
+      ],
+      "id": "9c2ae0e2-b449-4131-8ff7-d303f1c3200f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://host.docker.internal:8088/mcp",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        1936,
+        624
+      ],
+      "id": "fc69ba67-ef41-4f60-b2c2-12e79ac74783",
+      "name": "Shodan CVE"
+    },
+    {
+      "parameters": {
+        "content": "## Shodan CVEDB\nFor getting details of CVEs\n\n[Shodan CVEDB API](https://cvedb.shodan.io/)",
+        "height": 144
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        768
+      ],
+      "id": "938da69d-ab30-4cbc-9289-1035737a6dce",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('System_Message', `This is a tool to look up additional details on CVEs,  If the CVE is found it will return details such as the CVSS Score, EPSS, and if it is in the KEV catalog.  In your response each CVE must detail the following if present: CVSS, EPSS, KEV status, Summary.`, 'string') }}",
+          "maxIterations": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Max_Iterations', `This is the number of tool calls you are allowing.  It is important to allow enough to research all CVEs and do additional research on threat actors and news coverage.  Min = 10`, 'number') }}",
+          "returnIntermediateSteps": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_Intermediate_Steps', ``, 'boolean') }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 2.2,
+      "position": [
+        1744,
+        416
+      ],
+      "id": "7605abfb-3fbb-4a35-839c-91edab3539e1",
+      "name": "AI Agent Tool"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "google/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "google/gemini-2.5-flash"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1632,
+        624
+      ],
+      "id": "f036536d-5029-4486-86ee-546a6a553afe",
+      "name": "OpenAI Chat Model3",
+      "credentials": {
+        "openAiApi": {
+          "id": "RcBzKjwFOVv3lyRZ",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "x-ai/grok-4-fast",
+          "mode": "list",
+          "cachedResultName": "x-ai/grok-4-fast"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1472,
+        464
+      ],
+      "id": "d8c1e89c-bf86-4372-ab0f-b75a2807432a",
+      "name": "OpenAI Chat Model4",
+      "credentials": {
+        "openAiApi": {
+          "id": "RcBzKjwFOVv3lyRZ",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://host.docker.internal:8099/mcp",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        2528,
+        560
+      ],
+      "id": "64cb00df-4b33-40b9-84be-1a45b697b0ef",
+      "name": "mitre attack"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "09adc09a-a69d-4e52-acdc-bdc07e027ff7",
+              "leftValue": "={{ $json.output.published }}",
+              "rightValue": "",
+              "operator": {
+                "type": "dateTime",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "523298f9-5a46-4757-a324-6f64d0ae3784",
+              "leftValue": "={{ $json.output.published }}",
+              "rightValue": "={{ new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ') }}\n",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            },
+            {
+              "id": "164a2398-6d78-437f-927b-4a3c21f92dbc",
+              "leftValue": "={{ $json.output.source }}",
+              "rightValue": "example.com",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "1eb2d127-9a98-44fc-a200-79ac3a781e1f",
+              "leftValue": "={{ $json.output.author }}",
+              "rightValue": "Jane Doe",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "3d0b096c-fe3f-43d5-963f-2cae63824a96",
+              "leftValue": "={{ $json.output.author }}",
+              "rightValue": "John Doe",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "ff356ab4-63d4-4237-8a22-64bd477cc47a",
+              "leftValue": "={{ $json.output.entities }}",
+              "rightValue": "ExampleCorp",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "48ae297b-01ff-435c-832e-ce38e19dad1b",
+              "leftValue": "={{ $json.output.author }}",
+              "rightValue": "John Smith",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        464,
+        16
+      ],
+      "id": "329680cf-21d9-4cdc-a1ce-bf5d1c680665",
+      "name": "Remove Fabrications"
+    },
+    {
+      "parameters": {
+        "content": "## OpenRouter via OpenAI Nodes\n\n- GPT 4.1 Nano for extraction - can make fake data\n\n- Claude 3.7 Sonnet for CyberNews Agent\n    - Grok 4 Fast - backup\n\n- Claude 4.5 Haiku for Tool Management\n\n- Claude 4 Sonnet for Final Report Write Up",
+        "height": 224,
+        "width": 656
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        784,
+        -336
+      ],
+      "id": "ae62d587-f2cf-4402-bb56-8781c7e27925",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://host.docker.internal:8085/mcp",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        2480,
+        720
+      ],
+      "id": "54f3887a-a5a7-4a79-9b49-e687b5955dc4",
+      "name": "markitdown"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{(+new Date).toString(36).slice(-5) + Math.random().toString(36).substr(2, 5)}}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        1792,
+        640
+      ],
+      "id": "b7596100-3281-4f6c-a54a-349163feeafd",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "Dw6r2G6ENuxcGQkW",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{(+new Date).toString(36).slice(-5) + Math.random().toString(36).substr(2, 5)}}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        1600,
+        400
+      ],
+      "id": "6ebbec22-9099-4ae5-a33c-80724423877e",
+      "name": "Redis Chat Memory1",
+      "credentials": {
+        "redis": {
+          "id": "Dw6r2G6ENuxcGQkW",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "# Loop over input items and add a new field called 'myNewField' to the JSON of each one\n_ = {\n  \"data\": _items[0][\"json\"][\"data\"][0][\"output\"]\n}\n_[\"data\"].append({\"output\": {\"quality\": 5, \"source\": \"https://exa.ai/\", \"author\": \"Web Research by Exa.ai\", \"summary\": _items[0][\"json\"][\"data\"][1][\"output\"]}})\n\nreturn _"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        16
+      ],
+      "id": "c58f415b-13dd-41da-b4b6-96d5973625f4",
+      "name": "Code in Python (Native)"
+    },
+    {
+      "parameters": {
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('System_Message', `This has a set of tools that allow you to conduct research about threat actors, MITRE ATT&CK, and search the web for more information.  You also have a markitdown tool which can be used to grab pages and return them as markdown.`, 'string') }}",
+          "maxIterations": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Max_Iterations', `This is the number of tool calls you are allowing.  It is important to allow enough to research all CVEs and do additional research on threat actors and news coverage.  Min = 10`, 'number') }}",
+          "returnIntermediateSteps": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_Intermediate_Steps', ``, 'boolean') }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        352
+      ],
+      "id": "200aa69e-5ae3-4a9b-bdee-3a7cc99987ff",
+      "name": "AI Agent Tool1"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{(+new Date).toString(36).slice(-5) + Math.random().toString(36).substr(2, 5)}}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        2272,
+        560
+      ],
+      "id": "b2740baa-e805-4376-b04b-1300a46a4a65",
+      "name": "Redis Chat Memory2",
+      "credentials": {
+        "redis": {
+          "id": "Dw6r2G6ENuxcGQkW",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "anthropic/claude-haiku-4.5",
+          "mode": "list",
+          "cachedResultName": "anthropic/claude-haiku-4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2112,
+        544
+      ],
+      "id": "5c1d167b-f384-4b5b-a4a2-b00ec25afc29",
+      "name": "OpenAI Chat Model5",
+      "credentials": {
+        "openAiApi": {
+          "id": "RcBzKjwFOVv3lyRZ",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "When clicking ‘Execute workflow’": [
+      {
+        "json": "https://krebsonsecurity.com/feed/"
+      },
+      {
+        "json": "https://www.cloudvulndb.org/rss/feed.xml"
+      },
+      {
+        "json": "https://www.schneier.com/feed/atom/"
+      },
+      {
+        "json": "https://www.darkreading.com/rss.xml"
+      },
+      {
+        "json": "https://www.blackhillsinfosec.com/blog/feed/"
+      },
+      {
+        "json": "https://feeds.feedburner.com/TheHackersNews"
+      },
+      {
+        "json": "https://www.securityweek.com/feed/"
+      },
+      {
+        "json": "https://www.wired.com/feed/rss"
+      },
+      {
+        "json": "https://www.cisa.gov/cybersecurity-advisories/all.xml"
+      },
+      {
+        "json": "https://www.kb.cert.org/vulfeed/"
+      },
+      {
+        "json": "https://www.csoonline.com/feed/"
+      },
+      {
+        "json": "https://unit42.paloaltonetworks.com/feed/"
+      },
+      {
+        "json": "https://feeds.feedburner.com/feedburner/Talos"
+      }
+    ]
+  },
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Remove Fabrications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "CyberNews Researcher",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Report Maker",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Markdown": {
+      "main": [
+        [
+          {
+            "node": "Mailgun",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "CyberNews Researcher",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "Code in Python (Native)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exa": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quality Sort": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CyberNews Researcher": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Report Maker": {
+      "main": [
+        [
+          {
+            "node": "Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shodan CVE": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "CyberNews Researcher",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "CyberNews Researcher",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "mitre attack": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Fabrications": {
+      "main": [
+        [
+          {
+            "node": "Quality Sort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "markitdown": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Tool1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent Tool",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "CyberNews Researcher",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in Python (Native)": {
+      "main": [
+        [
+          {
+            "node": "Report Maker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory2": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent Tool1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent Tool1": {
+      "ai_tool": [
+        [
+          {
+            "node": "CyberNews Researcher",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Tool1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3fd22a39-644f-4728-9177-c3fd34f06b76",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a583f62e40e8e3927f719b0eca8b15501c21a5a42e7ff840a12f45ec1713e589"
+  },
+  "id": "ZJwFY32My7gzwWVN",
+  "tags": [
+    {
+      "updatedAt": "2025-12-21T22:08:15.014Z",
+      "createdAt": "2025-12-21T22:08:15.014Z",
+      "id": "H3DchBFIxk7i2ttv",
+      "name": "News"
+    },
+    {
+      "updatedAt": "2025-12-21T22:08:15.013Z",
+      "createdAt": "2025-12-21T22:08:15.013Z",
+      "id": "kL41JEAfOemC3RFq",
+      "name": "Cybersecurity"
+    }
+  ]
+}
